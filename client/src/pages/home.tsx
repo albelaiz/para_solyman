@@ -2,12 +2,14 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Heart, ShoppingCart, Search, Shield, Truck, UserRound, MessageCircle, PillBottle, Sparkles, Leaf, Baby } from "lucide-react";
+import { Link } from "wouter";
 import SearchBar from "@/components/search-bar";
 import CategoryFilter from "@/components/category-filter";
 import ProductCard from "@/components/product-card";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/currency";
 import { orderViaWhatsApp } from "@/lib/whatsapp";
+import { useCart } from "@/contexts/cart-context";
 import { toast } from "@/hooks/use-toast";
 import type { Product } from "@shared/schema";
 
@@ -15,7 +17,7 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [favorites, setFavorites] = useState<string[]>([]);
-  const [cartItems, setCartItems] = useState<string[]>([]);
+  const { getTotalItems } = useCart();
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ["/api/products", selectedCategory, searchQuery],
@@ -46,10 +48,7 @@ export default function Home() {
   };
 
   const handleCartClick = () => {
-    toast({
-      title: "Panier",
-      description: `Votre panier contient ${cartItems.length} article${cartItems.length !== 1 ? 's' : ''}`,
-    });
+    // This will be handled by the Link component
   };
 
   const handleViewAllProducts = () => {
@@ -117,22 +116,20 @@ export default function Home() {
                 <Heart className="h-5 w-5" />
                 <span className="absolute -top-1 -right-1 bg-accent-gold text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{favorites.length}</span>
               </Button>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="relative text-gray-600 hover:text-primary-600"
-                onClick={handleCartClick}
-              >
-                <ShoppingCart className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 bg-accent-gold text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{cartItems.length}</span>
-              </Button>
-              <div 
-                className="hidden lg:flex items-center space-x-2 text-primary-600 cursor-pointer hover:text-primary-700 transition-colors"
-                onClick={handleWhatsAppContact}
-              >
+              <Link href="/cart">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="relative text-gray-600 hover:text-primary-600"
+                >
+                  <ShoppingCart className="h-5 w-5" />
+                  <span className="absolute -top-1 -right-1 bg-accent-gold text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{getTotalItems()}</span>
+                </Button>
+              </Link>
+              <div className="hidden lg:flex items-center space-x-2 text-primary-600">
                 <MessageCircle className="h-6 w-6" />
                 <div>
-                  <p className="text-sm font-semibold">Commande rapide</p>
+                  <p className="text-sm font-semibold">Support client</p>
                   <p className="text-xs">+212 612 345 678</p>
                 </div>
               </div>
@@ -168,17 +165,18 @@ export default function Home() {
                     onClick={handleViewProducts}
                   >
                     <ShoppingCart className="mr-2 h-5 w-5" />
-                    Voir nos produits
+                    Découvrir nos produits
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    size="lg" 
-                    className="bg-white/10 backdrop-blur-sm text-white border-2 border-white/30 hover:bg-white/20 font-semibold px-8 py-4 rounded-2xl"
-                    onClick={handleWhatsAppContact}
-                  >
-                    <MessageCircle className="mr-2 h-5 w-5" />
-                    Commander via WhatsApp
-                  </Button>
+                  <Link href="/cart">
+                    <Button 
+                      variant="outline" 
+                      size="lg" 
+                      className="bg-white/10 backdrop-blur-sm text-white border-2 border-white/30 hover:bg-white/20 font-semibold px-8 py-4 rounded-2xl"
+                    >
+                      <ShoppingCart className="mr-2 h-5 w-5" />
+                      Voir mon panier ({getTotalItems()})
+                    </Button>
+                  </Link>
                 </div>
               </motion.div>
               <motion.div 
