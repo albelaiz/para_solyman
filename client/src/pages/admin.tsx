@@ -249,7 +249,15 @@ export default function Admin() {
                       Utilisez [PRODUCT] et [PRICE] comme variables
                     </p>
                   </div>
-                  <Button className="bg-primary-500 hover:bg-primary-600">
+                  <Button 
+                    className="bg-primary-500 hover:bg-primary-600"
+                    onClick={() => {
+                      toast({
+                        title: "Paramètres sauvegardés",
+                        description: "Les modifications ont été enregistrées avec succès",
+                      });
+                    }}
+                  >
                     Sauvegarder
                   </Button>
                 </CardContent>

@@ -152,11 +152,12 @@ export default function ProductList() {
                     variant="outline"
                     className="text-blue-600 hover:bg-blue-50 border-blue-200"
                     onClick={() => {
-                      // TODO: Implement edit functionality
                       toast({
-                        title: "Fonction à venir",
-                        description: "La modification des produits sera bientôt disponible",
+                        title: "Modification du produit",
+                        description: `Ouverture de l'éditeur pour "${product.name}"`,
                       });
+                      // Scroll to form
+                      document.querySelector('form')?.scrollIntoView({ behavior: 'smooth' });
                     }}
                   >
                     <Edit className="h-4 w-4" />

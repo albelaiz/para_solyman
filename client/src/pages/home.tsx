@@ -7,11 +7,15 @@ import CategoryFilter from "@/components/category-filter";
 import ProductCard from "@/components/product-card";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/currency";
+import { orderViaWhatsApp } from "@/lib/whatsapp";
+import { toast } from "@/hooks/use-toast";
 import type { Product } from "@shared/schema";
 
 export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [cartItems, setCartItems] = useState<string[]>([]);
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ["/api/products", selectedCategory, searchQuery],
@@ -32,6 +36,53 @@ export default function Home() {
     { id: "bio", name: "Bio & Naturel", icon: Leaf, color: "bg-green-500" },
     { id: "bebe", name: "Bébé & Maman", icon: Baby, color: "bg-purple-500" },
   ];
+
+  // Handler functions
+  const handleFavoriteToggle = () => {
+    toast({
+      title: "Favoris",
+      description: `Vous avez ${favorites.length} produit${favorites.length !== 1 ? 's' : ''} dans vos favoris`,
+    });
+  };
+
+  const handleCartClick = () => {
+    toast({
+      title: "Panier",
+      description: `Votre panier contient ${cartItems.length} article${cartItems.length !== 1 ? 's' : ''}`,
+    });
+  };
+
+  const handleViewAllProducts = () => {
+    setSelectedCategory("all");
+    setSearchQuery("");
+    // Scroll to products section
+    document.getElementById("products-section")?.scrollIntoView({ behavior: "smooth" });
+    toast({
+      title: "Tous les produits",
+      description: "Affichage de tous nos produits disponibles",
+    });
+  };
+
+  const handleViewProducts = () => {
+    // Scroll to products section
+    document.getElementById("products-section")?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleWhatsAppContact = () => {
+    orderViaWhatsApp("", "");
+  };
+
+  const handleCategoryClick = (categoryId: string) => {
+    setSelectedCategory(categoryId);
+    document.getElementById("products-section")?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleFooterLinkClick = (linkName: string) => {
+    toast({
+      title: linkName,
+      description: `Page ${linkName} sera bientôt disponible`,
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -57,19 +108,32 @@ export default function Home() {
 
             {/* Navigation Actions */}
             <div className="flex items-center space-x-6">
-              <Button variant="ghost" size="icon" className="relative text-gray-600 hover:text-primary-600">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="relative text-gray-600 hover:text-primary-600"
+                onClick={handleFavoriteToggle}
+              >
                 <Heart className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 bg-accent-gold text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
+                <span className="absolute -top-1 -right-1 bg-accent-gold text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{favorites.length}</span>
               </Button>
-              <Button variant="ghost" size="icon" className="relative text-gray-600 hover:text-primary-600">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="relative text-gray-600 hover:text-primary-600"
+                onClick={handleCartClick}
+              >
                 <ShoppingCart className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 bg-accent-gold text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">0</span>
+                <span className="absolute -top-1 -right-1 bg-accent-gold text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{cartItems.length}</span>
               </Button>
-              <div className="hidden lg:flex items-center space-x-2 text-primary-600">
+              <div 
+                className="hidden lg:flex items-center space-x-2 text-primary-600 cursor-pointer hover:text-primary-700 transition-colors"
+                onClick={handleWhatsAppContact}
+              >
                 <MessageCircle className="h-6 w-6" />
                 <div>
                   <p className="text-sm font-semibold">Commande rapide</p>
-                  <p className="text-xs">+212 6XX XXX XXX</p>
+                  <p className="text-xs">+212 612 345 678</p>
                 </div>
               </div>
             </div>
@@ -98,11 +162,20 @@ export default function Home() {
                   Qualité garantie, livraison rapide, conseils d'experts.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4">
-                  <Button size="lg" className="bg-accent-gold hover:bg-accent-copper text-primary-700 font-semibold px-8 py-4 rounded-2xl">
+                  <Button 
+                    size="lg" 
+                    className="bg-accent-gold hover:bg-accent-copper text-primary-700 font-semibold px-8 py-4 rounded-2xl"
+                    onClick={handleViewProducts}
+                  >
                     <ShoppingCart className="mr-2 h-5 w-5" />
                     Voir nos produits
                   </Button>
-                  <Button variant="outline" size="lg" className="bg-white/10 backdrop-blur-sm text-white border-2 border-white/30 hover:bg-white/20 font-semibold px-8 py-4 rounded-2xl">
+                  <Button 
+                    variant="outline" 
+                    size="lg" 
+                    className="bg-white/10 backdrop-blur-sm text-white border-2 border-white/30 hover:bg-white/20 font-semibold px-8 py-4 rounded-2xl"
+                    onClick={handleWhatsAppContact}
+                  >
                     <MessageCircle className="mr-2 h-5 w-5" />
                     Commander via WhatsApp
                   </Button>
@@ -164,6 +237,7 @@ export default function Home() {
                 transition={{ duration: 0.6, delay: index * 0.1 }}
                 viewport={{ once: true }}
                 whileHover={{ scale: 1.05 }}
+                onClick={() => handleCategoryClick(category.id)}
               >
                 <div className="bg-gradient-to-br from-primary-50 to-primary-100 rounded-3xl p-8 text-center transition-all duration-300 premium-shadow group-hover:shadow-2xl">
                   <div className={`w-20 h-20 ${category.color} rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300`}>
@@ -187,7 +261,7 @@ export default function Home() {
       </section>
 
       {/* Products Section */}
-      <section className="py-20 bg-gray-50">
+      <section id="products-section" className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-12">
             <motion.div
@@ -250,7 +324,11 @@ export default function Home() {
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
           >
-            <Button size="lg" className="bg-primary-500 hover:bg-primary-600 text-white font-semibold px-8 py-4 rounded-2xl">
+            <Button 
+              size="lg" 
+              className="bg-primary-500 hover:bg-primary-600 text-white font-semibold px-8 py-4 rounded-2xl"
+              onClick={handleViewAllProducts}
+            >
               Voir tous les produits
             </Button>
           </motion.div>
@@ -325,9 +403,12 @@ export default function Home() {
               <ul className="space-y-3">
                 {categories.map((category) => (
                   <li key={category.id}>
-                    <a href="#" className="text-primary-200 hover:text-white transition-colors">
+                    <button 
+                      onClick={() => handleCategoryClick(category.id)}
+                      className="text-primary-200 hover:text-white transition-colors cursor-pointer"
+                    >
                       {category.name}
-                    </a>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -336,11 +417,46 @@ export default function Home() {
             <div>
               <h4 className="font-bold text-lg mb-6">Support</h4>
               <ul className="space-y-3">
-                <li><a href="#" className="text-primary-200 hover:text-white transition-colors">Contact</a></li>
-                <li><a href="#" className="text-primary-200 hover:text-white transition-colors">FAQ</a></li>
-                <li><a href="#" className="text-primary-200 hover:text-white transition-colors">Livraison</a></li>
-                <li><a href="#" className="text-primary-200 hover:text-white transition-colors">Retours</a></li>
-                <li><a href="#" className="text-primary-200 hover:text-white transition-colors">Garantie</a></li>
+                <li>
+                  <button 
+                    onClick={() => handleFooterLinkClick("Contact")}
+                    className="text-primary-200 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Contact
+                  </button>
+                </li>
+                <li>
+                  <button 
+                    onClick={() => handleFooterLinkClick("FAQ")}
+                    className="text-primary-200 hover:text-white transition-colors cursor-pointer"
+                  >
+                    FAQ
+                  </button>
+                </li>
+                <li>
+                  <button 
+                    onClick={() => handleFooterLinkClick("Livraison")}
+                    className="text-primary-200 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Livraison
+                  </button>
+                </li>
+                <li>
+                  <button 
+                    onClick={() => handleFooterLinkClick("Retours")}
+                    className="text-primary-200 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Retours
+                  </button>
+                </li>
+                <li>
+                  <button 
+                    onClick={() => handleFooterLinkClick("Garantie")}
+                    className="text-primary-200 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Garantie
+                  </button>
+                </li>
               </ul>
             </div>
 
