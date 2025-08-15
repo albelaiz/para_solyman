@@ -1,12 +1,12 @@
 # Overview
 
-This is an ultra-premium Moroccan parafarmacia website called "PharmaCare Premium" built with luxury design and sophisticated features. The application includes a modern React frontend with premium animations, Express.js backend, and sophisticated DH currency integration. Customers can browse pharmaceutical products, search with live suggestions, and order directly via WhatsApp. Features a hidden admin panel for product management and analytics.
+This is an ultra-premium Moroccan parafarmacia website called "PharmaCare Premium" built with luxury design and sophisticated features. The application includes a modern React frontend with premium animations, Express.js backend, and sophisticated DH currency integration. Customers can browse pharmaceutical products, search with live suggestions, and place orders with email notifications sent to admin. Features a hidden admin panel for product management and analytics.
 
 ## Key Features
 - Ultra-premium luxury design with Moroccan aesthetic
 - DH currency formatting throughout
 - Hidden admin access at `/admin-secret-2024` (not visible to regular visitors)
-- WhatsApp integration for direct ordering
+- Email notification system for order processing (Gmail SMTP)
 - Live search with product suggestions
 - Advanced category filtering
 - Smooth animations and micro-interactions

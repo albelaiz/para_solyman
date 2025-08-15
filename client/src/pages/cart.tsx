@@ -84,19 +84,23 @@ Merci de confirmer cette commande.`;
 
       const result = await response.json();
       
-      // Clear cart and show success
-      clearCart();
-      setShowCheckout(false);
-      setCheckoutForm({ name: '', phone: '', email: '' });
-      
-      toast({
-        title: "Commande envoyée ✅",
-        description: result.message,
-      });
-
-      // If there's a WhatsApp URL (fallback), open it
-      if (result.whatsappUrl) {
-        window.open(result.whatsappUrl, '_blank');
+      if (result.success) {
+        // Clear cart and show success
+        clearCart();
+        setShowCheckout(false);
+        setCheckoutForm({ name: '', phone: '', email: '' });
+        
+        toast({
+          title: "Commande envoyée ✅",
+          description: result.message,
+        });
+      } else {
+        // Show error message
+        toast({
+          title: "Erreur",
+          description: result.message,
+          variant: "destructive"
+        });
       }
 
     } catch (error) {

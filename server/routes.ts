@@ -6,7 +6,7 @@ import { insertProductSchema, insertAdminSchema, insertSettingsSchema, orderSche
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import twilio from "twilio";
+import nodemailer from "nodemailer";
 
 // Extend Express Request type to include session
 declare global {
@@ -173,82 +173,144 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Order submission endpoint with WhatsApp Business API
+  // Order submission endpoint with Gmail email notification
   app.post("/api/orders/submit", async (req, res) => {
     try {
       // Validate order data
       const orderData = orderSchema.parse(req.body);
       
-      // Get WhatsApp settings
-      const settings = await storage.getSettings();
-      if (!settings) {
-        return res.status(500).json({ message: "WhatsApp settings not configured" });
-      }
+      // Get admin email from environment variables
+      const adminEmail = process.env.ADMIN_EMAIL || "admin@pharmacare.ma";
+      const gmailUser = process.env.GMAIL_USER;
+      const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
 
-      // Create order summary message
+      // Create order summary for email
       const orderSummary = orderData.items.map(item => 
-        `${item.product.name} x${item.quantity} - ${Number(item.product.price) * item.quantity} DH`
-      ).join('\n');
+        `<tr>
+          <td style="padding: 8px; border: 1px solid #ddd;">${item.product.name}</td>
+          <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${item.quantity}</td>
+          <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${Number(item.product.price)} DH</td>
+          <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${Number(item.product.price) * item.quantity} DH</td>
+        </tr>`
+      ).join('');
 
-      const message = `🛒 NOUVELLE COMMANDE PharmaCare Premium
+      const orderId = `ORDER-${Date.now()}`;
+      const orderDate = new Date().toLocaleDateString('fr-FR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
 
-👤 Client: ${orderData.customer.name}
-📞 Téléphone: ${orderData.customer.phone}
-📧 Email: ${orderData.customer.email}
+      // Create HTML email template
+      const emailHtml = `
+        <html>
+          <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+              <h1 style="margin: 0; font-size: 24px;">🛒 Nouvelle Commande PharmaCare Premium</h1>
+              <p style="margin: 5px 0 0 0; opacity: 0.9;">Commande #${orderId}</p>
+            </div>
+            
+            <div style="background: #f8f9fa; padding: 20px; border: 1px solid #dee2e6;">
+              <h2 style="color: #495057; margin-top: 0;">Informations Client</h2>
+              <table style="width: 100%; background: white; border-radius: 4px; padding: 15px;">
+                <tr><td style="padding: 5px 0;"><strong>Nom:</strong> ${orderData.customer.name}</td></tr>
+                <tr><td style="padding: 5px 0;"><strong>Téléphone:</strong> ${orderData.customer.phone}</td></tr>
+                <tr><td style="padding: 5px 0;"><strong>Email:</strong> ${orderData.customer.email}</td></tr>
+                <tr><td style="padding: 5px 0;"><strong>Date:</strong> ${orderDate}</td></tr>
+              </table>
+            </div>
 
-📦 PRODUITS:
-${orderSummary}
+            <div style="background: white; padding: 20px; border: 1px solid #dee2e6; border-top: none;">
+              <h2 style="color: #495057; margin-top: 0;">Détails de la Commande</h2>
+              <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+                <thead>
+                  <tr style="background: #e9ecef;">
+                    <th style="padding: 12px 8px; border: 1px solid #ddd; text-align: left;">Produit</th>
+                    <th style="padding: 12px 8px; border: 1px solid #ddd; text-align: center;">Qté</th>
+                    <th style="padding: 12px 8px; border: 1px solid #ddd; text-align: right;">Prix Unit.</th>
+                    <th style="padding: 12px 8px; border: 1px solid #ddd; text-align: right;">Sous-total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${orderSummary}
+                </tbody>
+              </table>
+              
+              <div style="text-align: right; margin-top: 20px; padding-top: 15px; border-top: 2px solid #667eea;">
+                <h3 style="margin: 0; color: #667eea; font-size: 24px;">Total: ${orderData.total} DH</h3>
+              </div>
+            </div>
 
-💰 TOTAL: ${orderData.total} DH
+            <div style="background: #e7f3ff; padding: 15px; border: 1px solid #bee5eb; border-top: none; border-radius: 0 0 8px 8px;">
+              <p style="margin: 0; color: #0c5460; font-size: 14px;">
+                <strong>Prochaines étapes:</strong> Contactez le client pour confirmer la commande et organiser la livraison.
+              </p>
+            </div>
+          </body>
+        </html>
+      `;
 
-Merci de confirmer cette commande.`;
-
-      // Send WhatsApp message using Twilio (if credentials are provided)
-      const accountSid = process.env.TWILIO_ACCOUNT_SID;
-      const authToken = process.env.TWILIO_AUTH_TOKEN;
-      const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
-
-      if (accountSid && authToken && twilioPhoneNumber) {
+      // Try to send email using Gmail SMTP
+      if (gmailUser && gmailAppPassword) {
         try {
-          const client = twilio(accountSid, authToken);
-          
-          await client.messages.create({
-            from: `whatsapp:${twilioPhoneNumber}`,
-            to: `whatsapp:${settings.whatsappNumber}`,
-            body: message
+          // Create transporter using Gmail SMTP
+          const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+              user: gmailUser,
+              pass: gmailAppPassword // App-specific password
+            }
           });
 
-          res.json({ 
-            success: true, 
-            message: "Commande envoyée avec succès via WhatsApp Business API",
-            orderId: `ORDER-${Date.now()}`
+          // Send email
+          await transporter.sendMail({
+            from: `"PharmaCare Premium" <${gmailUser}>`,
+            to: adminEmail,
+            subject: `📦 Nouvelle Commande #${orderId} - ${orderData.customer.name}`,
+            html: emailHtml,
+            text: `Nouvelle commande de ${orderData.customer.name} (${orderData.customer.phone}) - Total: ${orderData.total} DH`
           });
-        } catch (twilioError) {
-          console.error('Twilio error:', twilioError);
-          // Fallback to regular WhatsApp web URL if Twilio fails
-          const whatsappUrl = `https://wa.me/${settings.whatsappNumber.replace('+', '')}?text=${encodeURIComponent(message)}`;
+
+          console.log('Order email sent successfully to:', adminEmail);
+          
           res.json({ 
             success: true, 
-            message: "Commande préparée. Redirection vers WhatsApp.",
-            whatsappUrl,
-            orderId: `ORDER-${Date.now()}`
+            message: "Votre commande a été envoyée avec succès. Nous vous contacterons bientôt pour confirmation.",
+            orderId: orderId
+          });
+        } catch (emailError) {
+          console.error('Gmail SMTP error:', emailError);
+          
+          res.status(500).json({ 
+            success: false, 
+            message: "Erreur technique lors de l'envoi. Veuillez réessayer ou nous contacter directement.",
+            error: "Email service unavailable"
           });
         }
       } else {
-        // Fallback to WhatsApp web URL if no Twilio credentials
-        const whatsappUrl = `https://wa.me/${settings.whatsappNumber.replace('+', '')}?text=${encodeURIComponent(message)}`;
+        // If no Gmail credentials, log the order and return success (for demo purposes)
+        console.log('Order received (no Gmail credentials configured):');
+        console.log('Customer:', orderData.customer);
+        console.log('Items:', orderData.items);
+        console.log('Total:', orderData.total, 'DH');
+        console.log('Email HTML that would be sent:');
+        console.log(emailHtml);
+        
         res.json({ 
           success: true, 
-          message: "Commande préparée. Redirection vers WhatsApp.",
-          whatsappUrl,
-          orderId: `ORDER-${Date.now()}`
+          message: "Votre commande a été reçue avec succès. Nous vous contacterons bientôt pour confirmation.",
+          orderId: orderId,
+          note: "Configure Gmail credentials for email notifications"
         });
       }
 
     } catch (error) {
       console.error('Order submission error:', error);
       res.status(400).json({ 
-        message: "Erreur lors de l'envoi de la commande", 
+        success: false,
+        message: "Erreur lors du traitement de votre commande. Veuillez vérifier vos informations et réessayer.", 
         error: error instanceof Error ? error.message : "Unknown error" 
       });
     }

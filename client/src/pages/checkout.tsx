@@ -68,24 +68,28 @@ export default function Checkout() {
 
       const result = await response.json();
       
-      // Show success and clear cart
-      setOrderCompleted(true);
-      clearCart();
-      
-      toast({
-        title: "Commande envoyée ✅",
-        description: result.message,
-      });
+      if (result.success) {
+        // Show success and clear cart
+        setOrderCompleted(true);
+        clearCart();
+        
+        toast({
+          title: "Commande envoyée ✅",
+          description: result.message,
+        });
 
-      // If there's a WhatsApp URL (fallback), open it
-      if (result.whatsappUrl) {
-        window.open(result.whatsappUrl, '_blank');
+        // Redirect to home after 3 seconds
+        setTimeout(() => {
+          setLocation('/');
+        }, 3000);
+      } else {
+        // Show error message
+        toast({
+          title: "Erreur",
+          description: result.message,
+          variant: "destructive"
+        });
       }
-
-      // Redirect to home after 3 seconds
-      setTimeout(() => {
-        setLocation('/');
-      }, 3000);
 
     } catch (error) {
       toast({

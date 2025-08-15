@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, decimal, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, decimal, integer, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -23,9 +23,9 @@ export const admins = pgTable("admins", {
 
 export const settings = pgTable("settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  whatsappNumber: text("whatsapp_number").notNull(),
+  adminEmail: text("admin_email").notNull().default("admin@pharmacare.ma"),
   currency: text("currency").notNull().default("DH"),
-  whatsappMessage: text("whatsapp_message").notNull(),
+  emailNotifications: boolean("email_notifications").notNull().default(true),
 });
 
 export const insertProductSchema = createInsertSchema(products).omit({
