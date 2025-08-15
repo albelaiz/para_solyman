@@ -1,10 +1,11 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
 import { Heart, Star, ShoppingCart } from "lucide-react";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/currency";
 import { useCart } from "@/contexts/cart-context";
+import { useFavorites } from "@/contexts/favorites-context";
 import type { Product } from "@shared/schema";
 
 interface ProductCardProps {
@@ -12,8 +13,8 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
-  const [isLiked, setIsLiked] = useState(false);
   const { addToCart } = useCart();
+  const { isFavorite, toggleFavorite } = useFavorites();
 
   const getCategoryBadge = (category: string) => {
     const categoryMap = {
@@ -27,16 +28,25 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   const categoryInfo = getCategoryBadge(product.category);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     addToCart(product, 1);
   };
 
+  const handleToggleFavorite = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleFavorite(product.id, product.name);
+  };
+
   return (
-    <motion.div 
-      className="bg-white rounded-3xl overflow-hidden premium-shadow product-card-hover cursor-pointer"
-      whileHover={{ y: -8, scale: 1.02 }}
-      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-    >
+    <Link href={`/product/${product.id}`}>
+      <motion.div 
+        className="bg-white rounded-3xl overflow-hidden premium-shadow product-card-hover cursor-pointer"
+        whileHover={{ y: -8, scale: 1.02 }}
+        transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+      >
       <div className="relative">
         <img 
           src={product.image} 
@@ -53,14 +63,11 @@ export default function ProductCard({ product }: ProductCardProps) {
           size="icon"
           variant="ghost"
           className={`absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full transition-colors ${
-            isLiked ? 'text-red-500' : 'text-gray-600 hover:text-red-500'
+            isFavorite(product.id) ? 'text-red-500' : 'text-gray-600 hover:text-red-500'
           }`}
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsLiked(!isLiked);
-          }}
+          onClick={handleToggleFavorite}
         >
-          <Heart className={`h-4 w-4 ${isLiked ? 'fill-current' : ''}`} />
+          <Heart className={`h-4 w-4 ${isFavorite(product.id) ? 'fill-current' : ''}`} />
         </Button>
       </div>
 
@@ -114,6 +121,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           Ajouter au panier
         </Button>
       </div>
-    </motion.div>
+      </motion.div>
+    </Link>
   );
 }

@@ -46,3 +46,23 @@ export type Admin = typeof admins.$inferSelect;
 export type InsertAdmin = z.infer<typeof insertAdminSchema>;
 export type Settings = typeof settings.$inferSelect;
 export type InsertSettings = z.infer<typeof insertSettingsSchema>;
+
+// Order schemas for checkout
+export const orderSchema = z.object({
+  customer: z.object({
+    name: z.string().min(1, "Le nom est requis"),
+    phone: z.string().min(1, "Le téléphone est requis"),
+    email: z.string().email("Email invalide"),
+  }),
+  items: z.array(z.object({
+    product: z.object({
+      id: z.string(),
+      name: z.string(),
+      price: z.string(),
+    }),
+    quantity: z.number().min(1),
+  })),
+  total: z.number().min(0),
+});
+
+export type Order = z.infer<typeof orderSchema>;

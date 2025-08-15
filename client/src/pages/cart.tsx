@@ -65,23 +65,39 @@ ${orderSummary}
 
 Merci de confirmer cette commande.`;
 
-      // Send to WhatsApp
-      const phoneNumber = "212612345678"; // Morocco WhatsApp number
-      const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
-      
-      // Open WhatsApp
-      window.open(whatsappUrl, '_blank');
+      // Send order via WhatsApp Business API (backend)
+      const response = await fetch('/api/orders/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customer: checkoutForm,
+          items: items,
+          total: getTotalPrice(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit order');
+      }
+
+      const result = await response.json();
       
       // Clear cart and show success
-      setTimeout(() => {
-        clearCart();
-        setShowCheckout(false);
-        setCheckoutForm({ name: '', phone: '', email: '' });
-        toast({
-          title: "Commande envoyée",
-          description: "Votre commande a été envoyée via WhatsApp. Merci !",
-        });
-      }, 1000);
+      clearCart();
+      setShowCheckout(false);
+      setCheckoutForm({ name: '', phone: '', email: '' });
+      
+      toast({
+        title: "Commande envoyée ✅",
+        description: result.message,
+      });
+
+      // If there's a WhatsApp URL (fallback), open it
+      if (result.whatsappUrl) {
+        window.open(result.whatsappUrl, '_blank');
+      }
 
     } catch (error) {
       toast({

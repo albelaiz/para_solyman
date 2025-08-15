@@ -10,14 +10,15 @@ import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/currency";
 import { orderViaWhatsApp } from "@/lib/whatsapp";
 import { useCart } from "@/contexts/cart-context";
+import { useFavorites } from "@/contexts/favorites-context";
 import { toast } from "@/hooks/use-toast";
 import type { Product } from "@shared/schema";
 
 export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [favorites, setFavorites] = useState<string[]>([]);
   const { getTotalItems } = useCart();
+  const { getFavoritesCount } = useFavorites();
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ["/api/products", selectedCategory, searchQuery],
@@ -43,7 +44,7 @@ export default function Home() {
   const handleFavoriteToggle = () => {
     toast({
       title: "Favoris",
-      description: `Vous avez ${favorites.length} produit${favorites.length !== 1 ? 's' : ''} dans vos favoris`,
+      description: `Vous avez ${getFavoritesCount()} produit${getFavoritesCount() !== 1 ? 's' : ''} dans vos favoris`,
     });
   };
 
@@ -107,15 +108,18 @@ export default function Home() {
 
             {/* Navigation Actions */}
             <div className="flex items-center space-x-6">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="relative text-gray-600 hover:text-primary-600"
-                onClick={handleFavoriteToggle}
-              >
-                <Heart className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 bg-accent-gold text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{favorites.length}</span>
-              </Button>
+              <Link href="/favorites">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="relative text-gray-600 hover:text-primary-600"
+                >
+                  <Heart className="h-5 w-5" />
+                  {getFavoritesCount() > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-accent-gold text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{getFavoritesCount()}</span>
+                  )}
+                </Button>
+              </Link>
               <Link href="/cart">
                 <Button 
                   variant="ghost" 

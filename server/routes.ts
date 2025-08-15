@@ -2,10 +2,11 @@ import type { Express, Request } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertProductSchema, insertAdminSchema, insertSettingsSchema } from "@shared/schema";
+import { insertProductSchema, insertAdminSchema, insertSettingsSchema, orderSchema } from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import twilio from "twilio";
 
 // Extend Express Request type to include session
 declare global {
@@ -169,6 +170,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(settings);
     } catch (error) {
       res.status(400).json({ message: "Invalid settings data", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  // Order submission endpoint with WhatsApp Business API
+  app.post("/api/orders/submit", async (req, res) => {
+    try {
+      // Validate order data
+      const orderData = orderSchema.parse(req.body);
+      
+      // Get WhatsApp settings
+      const settings = await storage.getSettings();
+      if (!settings) {
+        return res.status(500).json({ message: "WhatsApp settings not configured" });
+      }
+
+      // Create order summary message
+      const orderSummary = orderData.items.map(item => 
+        `${item.product.name} x${item.quantity} - ${Number(item.product.price) * item.quantity} DH`
+      ).join('\n');
+
+      const message = `🛒 NOUVELLE COMMANDE PharmaCare Premium
+
+👤 Client: ${orderData.customer.name}
+📞 Téléphone: ${orderData.customer.phone}
+📧 Email: ${orderData.customer.email}
+
+📦 PRODUITS:
+${orderSummary}
+
+💰 TOTAL: ${orderData.total} DH
+
+Merci de confirmer cette commande.`;
+
+      // Send WhatsApp message using Twilio (if credentials are provided)
+      const accountSid = process.env.TWILIO_ACCOUNT_SID;
+      const authToken = process.env.TWILIO_AUTH_TOKEN;
+      const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
+
+      if (accountSid && authToken && twilioPhoneNumber) {
+        try {
+          const client = twilio(accountSid, authToken);
+          
+          await client.messages.create({
+            from: `whatsapp:${twilioPhoneNumber}`,
+            to: `whatsapp:${settings.whatsappNumber}`,
+            body: message
+          });
+
+          res.json({ 
+            success: true, 
+            message: "Commande envoyée avec succès via WhatsApp Business API",
+            orderId: `ORDER-${Date.now()}`
+          });
+        } catch (twilioError) {
+          console.error('Twilio error:', twilioError);
+          // Fallback to regular WhatsApp web URL if Twilio fails
+          const whatsappUrl = `https://wa.me/${settings.whatsappNumber.replace('+', '')}?text=${encodeURIComponent(message)}`;
+          res.json({ 
+            success: true, 
+            message: "Commande préparée. Redirection vers WhatsApp.",
+            whatsappUrl,
+            orderId: `ORDER-${Date.now()}`
+          });
+        }
+      } else {
+        // Fallback to WhatsApp web URL if no Twilio credentials
+        const whatsappUrl = `https://wa.me/${settings.whatsappNumber.replace('+', '')}?text=${encodeURIComponent(message)}`;
+        res.json({ 
+          success: true, 
+          message: "Commande préparée. Redirection vers WhatsApp.",
+          whatsappUrl,
+          orderId: `ORDER-${Date.now()}`
+        });
+      }
+
+    } catch (error) {
+      console.error('Order submission error:', error);
+      res.status(400).json({ 
+        message: "Erreur lors de l'envoi de la commande", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
     }
   });
 
